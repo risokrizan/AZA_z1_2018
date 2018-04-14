@@ -2,11 +2,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 
 #define INF 2147483647
 typedef struct QItem {
     int vrchol;
+    int posun;
     struct QItem *dalsi;
 } QI;
 
@@ -18,19 +18,20 @@ typedef struct Queue {
 
 typedef struct Neighbours {
     int vrchol;
-    int parent;
     struct Neighbours *dalsi;
 } Susedia;
 
 int map[150][150];
 int n, m;
-int visited[22500];
-int parent[22500];
+int visited[22500][11][11];
+int parent[22500][11][11];
 int zac_x = -1, zac_y = -1, ciel_x = -1, ciel_y = -1;
+int koniec=0;
 
-void vloz_queue(Q *q, int vrchol) {
+void vloz_queue(Q *q, int vrchol,int posun) {
     QI *novy = (QI *) malloc(sizeof(QI));
     novy->vrchol = vrchol;
+    novy->posun=posun;
     novy->dalsi = NULL;
 
     if (q->posledny == NULL) {
@@ -42,12 +43,12 @@ void vloz_queue(Q *q, int vrchol) {
     }
 }
 
-int vyber_queue(Q *q) {
+QI * vyber_queue(Q *q) {
 
     if (q->prvy == NULL)
-        return -1;
+        return NULL;
 
-    int novy = q->prvy->vrchol;
+    QI *novy = q->prvy;
     q->prvy = q->prvy->dalsi;
 
     if (q->prvy == NULL || q->posledny == NULL) {
@@ -69,14 +70,14 @@ void mozneIst(Susedia **prvy) {
 }
 
 
-void pridajSuseda(Susedia **prvy, int vrchol, int parent) {
+void pridajSuseda(Susedia **prvy, int vrchol,int parent) {
 
     Susedia *novy = (Susedia *) malloc(sizeof(Susedia));
 
     Susedia *akt = *prvy;
 
     novy->vrchol = vrchol;
-    novy->parent = parent;
+
     novy->dalsi = NULL;
 
     if (*prvy == NULL) {
@@ -143,7 +144,7 @@ Susedia *zisti_susedov(int aktVrchol, int predchvrchol) {
 
     Susedia *prvy = NULL;
 
-    printf("aktvrchol %d parent %d", aktVrchol, predchvrchol);
+    //printf("aktvrchol %d parent %d", aktVrchol, predchvrchol);
     int akt_y = aktVrchol / n;
     int akt_x = aktVrchol % n;
     int predch_y = predchvrchol / n;
@@ -211,54 +212,76 @@ Susedia *zisti_susedov(int aktVrchol, int predchvrchol) {
 void bfs(int pocVrchol, Q *q) {
 
 
-    int predchVrchol = pocVrchol;
-    int aktualnyVrchol = pocVrchol;
-    visited[pocVrchol] = 1;
-    vloz_queue(q, pocVrchol);
+    int predchVrchol;
+    QI *aktualnyVrchol;
+    vloz_queue(q, pocVrchol,0);
 
-    for (int i = 0; i < n * m; i++) {
-        parent[i] = -1;
-        visited[i]= 0;
+
+    for (int i=0;i < n*m;i++ ){
+        for (int j=0;j<11;j++){
+            for (int k=0;k<11;k++){
+                visited[i][j][k]= -1;
+                parent[i][j][k]= -1;
+
+            }
+        }
     }
-    parent[pocVrchol] = pocVrchol;
-
-    while (!q->posledny == NULL) {
-
+    visited[pocVrchol][5][5] = pocVrchol;
+    parent[pocVrchol][5][5] = pocVrchol;
+    while ((!q->posledny == NULL)&& koniec!=1) {
 
         aktualnyVrchol = vyber_queue(q);
-        predchVrchol = parent[aktualnyVrchol];
-        //printf("X%d Y%d\n", aktualnyVrchol % n, aktualnyVrchol / n);
-        //map[aktualnyVrchol / n][aktualnyVrchol % n] = 2;
-        if (aktualnyVrchol == ciel_y * n + ciel_x) {
-           break;
-        }
-        //zisti susedov
-        Susedia *temp = zisti_susedov(aktualnyVrchol, predchVrchol);
+        predchVrchol = visited[aktualnyVrchol->vrchol][(aktualnyVrchol->vrchol/n-aktualnyVrchol->posun/n) + 5][(aktualnyVrchol->vrchol%n-aktualnyVrchol->posun%n) + 5];
 
-        mozneIst(&temp);
+
+        //zisti susedov
+        Susedia *temp = zisti_susedov(aktualnyVrchol->vrchol, predchVrchol);
+
+        int vertex;
+        int pom;
+
+        //mozneIst(&temp);
 
         while (temp != NULL) {
             int adjVertex = temp->vrchol;
 
-            if (visited[adjVertex] == 0) {
-                visited[adjVertex] = 1;
-                vloz_queue(q, adjVertex);
-                parent[adjVertex] = aktualnyVrchol;
+            if (visited[adjVertex][(adjVertex/n-aktualnyVrchol->vrchol/n) + 5][(adjVertex%n-aktualnyVrchol->vrchol%n) + 5] == -1) {
+                visited[adjVertex][(adjVertex/n-aktualnyVrchol->vrchol/n) + 5][(adjVertex%n-aktualnyVrchol->vrchol%n) + 5] = aktualnyVrchol->vrchol;
+                parent[aktualnyVrchol->vrchol][(adjVertex/n-aktualnyVrchol->vrchol/n) + 5][(adjVertex%n-aktualnyVrchol->vrchol%n) + 5]=aktualnyVrchol->posun;
+                //if (adjVertex==3)
+                //       printf ("%d %d %d %d\n",aktualnyVrchol->vrchol,(adjVertex/n-aktualnyVrchol->vrchol/n) + 5,(adjVertex%n-aktualnyVrchol->vrchol%n) + 5,aktualnyVrchol->posun);
+                vloz_queue(q, adjVertex, aktualnyVrchol->vrchol);
+
             }
+
+            if (adjVertex == ciel_y * n + ciel_x) {
+                vertex = aktualnyVrchol->vrchol;
+                //printf("SOM TU");
+                map[adjVertex / n][adjVertex %n] = 2;
+                while (vertex != zac_y*n+zac_x) {
+                    //printf("PPPREV%d AKT%d\n",vertex,adjVertex);
+                    map[vertex / n][vertex % n] = 2;
+                    pom = vertex;
+                    //printf("%d %d %d\n",vertex,(adjVertex / n - vertex / n )+ 5,(adjVertex % n - vertex % n )+ 5);
+                    vertex = parent[vertex][(adjVertex / n - vertex / n )+ 5][(adjVertex % n - vertex % n )+ 5];
+                    adjVertex = pom;
+                    //printf("XXPREV%d AKT%d\n",vertex,adjVertex);
+                }
+                map[zac_y][zac_x] = 2;
+                koniec = 1;
+                break;
+
+            }
+
             temp = temp->dalsi;
         }
-
+        free(aktualnyVrchol);
     }
+    if (!koniec)
+        printf ("No solution\n");
 }
 
-void markni_cestu(int vrchol) {
 
-    map[vrchol / n][vrchol % n] = 2;
-    if (vrchol == NULL)
-        return;
-    markni_cestu(parent[vrchol]);
-
-}
 
 int main() {
 
@@ -269,6 +292,7 @@ int main() {
         scanf("%d %d\n", &m, &n); //m-pocet riadkov n-pocet stlpcov
         scanf("%d %d\n", &zac_y, &zac_x);
         scanf("%d %d\n", &ciel_y, &ciel_x);
+        koniec=0;
         //priprav mapu
         priprav_mapu(m, n);
         //vytvor queue
@@ -276,8 +300,8 @@ int main() {
         q->prvy = NULL;
         q->posledny = NULL;
         bfs((zac_y * m) + zac_x, q);
-        markni_cestu(ciel_y * n + ciel_x);
-        vypis_mapu(m, n);
+        if(koniec)
+            vypis_mapu(m, n);
         vycisti_mapu(m,n);
         printf("--------------------\n");
     }
